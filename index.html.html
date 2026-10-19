@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>بازی حذفی هوش مصنوعی</title>
+<style>
+:root{--bg:#f4f6fb;--card:#fff;--tx:#1b2333;--mu:#64708a;--pr:#3b5bdb;--ok:#2b9348;--bad:#d62839;--bd:#dde3f0;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root{--bg:#10141f;--card:#1a2030;--tx:#eef1f8;--mu:#9aa6c0;--pr:#6c8cff;--ok:#4cc26b;--bad:#ff6b78;--bd:#2c3550}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:Vazirmatn,Tahoma,Arial,sans-serif;line-height:1.8}
+#app{max-width:900px;margin:0 auto;padding:14px}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.code{background:var(--pr);color:#fff;padding:2px 12px;border-radius:99px;font-weight:700}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:16px;margin-bottom:12px}
+.c{text-align:center}.meta{color:var(--mu);font-size:.9rem}
+h2{margin:.3em 0 .6em}h3{margin:0 0 .5em}
+.big{font-size:1.1rem;font-weight:700;word-break:break-all;margin:8px 0}
+button{background:var(--pr);color:#fff;border:0;border-radius:10px;padding:12px 18px;font:inherit;font-weight:700;width:100%;margin-top:6px;cursor:pointer}
+button.sec{background:transparent;color:var(--pr);border:1px solid var(--pr)}
+button:disabled{opacity:.5}
+input{width:100%;padding:12px;border:1px solid var(--bd);border-radius:10px;font:inherit;margin:6px 0;background:var(--bg);color:var(--tx)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:4px 14px;border-radius:99px;background:var(--bg);border:1px solid var(--bd)}
+.chip.ok{border-color:var(--ok);color:var(--ok)}.chip.bad{border-color:var(--bad);color:var(--bad);text-decoration:line-through}
+.opts{display:grid;gap:10px;margin:10px 0}
+.opt{padding:12px 14px;border:2px solid var(--bd);border-radius:12px;background:var(--bg);text-align:right;color:var(--tx);font-weight:500;margin:0;width:100%}
+.opt.ok{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 18%,transparent)}
+.opt.dim{opacity:.45}.opt.sel{border-color:var(--pr)}
+.timer{font-size:1.4rem;font-weight:700;text-align:center;color:var(--pr)}
+.msg-ok{color:var(--ok);font-weight:700;font-size:1.2rem}.msg-bad{color:var(--bad);font-weight:700;font-size:1.2rem}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+/* ====== سوال‌ها: l=سطح، s=زمان (ثانیه)، o=گزینه‌ها، c=اندیس گزینه صحیح (از صفر) — آزادانه ویرایش کنید ====== */
+const QUESTIONS=[
+{l:'آسان',s:15,q:'عبارت AI مخفف چیست؟',o:['Automatic Internet','Artificial Intelligence','Advanced Interface','Applied Information'],c:1},
+{l:'آسان',s:15,q:'کدام مورد نمونه‌ای از چت‌بات هوش مصنوعی است؟',o:['ChatGPT','Notepad','Calculator','Paint'],c:0},
+{l:'آسان',s:15,q:'به متن یا دستوری که برای مدل هوش مصنوعی می‌نویسیم چه می‌گویند؟',o:['پرامپت','کوکی','فایروال','پروکسی'],c:0},
+{l:'متوسط',s:20,q:'هوش مصنوعی مولد (Generative AI) می‌تواند کدام را تولید کند؟',o:['فقط اعداد','متن، تصویر و کد','فقط صدای تلفن','فقط جدول ضرب'],c:1},
+{l:'متوسط',s:20,q:'«توهم» (Hallucination) در مدل‌های زبانی یعنی چه؟',o:['تولید پاسخ نادرست یا ساختگی با لحن مطمئن','سرعت بسیار بالای پاسخ‌دهی','خاموش شدن ناگهانی مدل','ترجمه‌ی ناقص متن'],c:0},
+{l:'متوسط',s:20,q:'بهترین رویکرد درباره محتوای آموزشی تولیدشده با هوش مصنوعی چیست؟',o:['کپی مستقیم بدون بررسی','بازبینی صحت و تناسب آن پیش از استفاده','استفاده فقط اگر طولانی باشد','حذف همه‌ی منابع آن'],c:1},
+{l:'سخت',s:25,q:'چرا پیش از ورود اطلاعات دانش‌آموزان به یک ابزار هوش مصنوعی باید آن‌ها را ناشناس کرد؟',o:['تا مدل سریع‌تر شود','تا حجم فایل کمتر شود','برای حفظ حریم خصوصی و کاهش خطر افشای اطلاعات شخصی','تا پاسخ‌ها خوش‌خط‌تر شوند'],c:2},
+{l:'سخت',s:25,q:'سوگیری (Bias) در مدل‌های هوش مصنوعی عمدتاً از کجا می‌تواند ناشی شود؟',o:['فقط از سرعت اینترنت','داده‌های آموزشی که کلیشه‌ها یا نابرابری‌ها را بازتاب می‌دهند','رنگ رابط کاربری','هیچ‌گاه؛ مدل‌ها کاملاً بی‌طرف‌اند'],c:1},
+{l:'سخت',s:25,q:'«Few-shot prompting» یعنی چه؟',o:['آموزش مدل با چند کاربر','محدود کردن پاسخ مدل به چند کلمه','خاموش کردن مدل پس از چند پاسخ','دادن چند نمونه ورودی-خروجی در پرامپت تا مدل الگو را دنبال کند'],c:3},
+{l:'خیلی سخت',s:35,q:'RAG (تولید تقویت‌شده با بازیابی) چیست؟',o:['روشی برای فشرده‌سازی تصویر','ترکیب تولید متن با بازیابی اطلاعات از منابع بیرونی برای پاسخ‌های مستندتر','پروتکل ارسال ایمیل','نوعی کارت گرافیک'],c:1},
+{l:'خیلی سخت',s:35,q:'درباره‌ی پارامتر دما (Temperature) در مدل‌های زبانی کدام عبارت درست است؟',o:['مقدار بالاتر همیشه دقت را بیشتر می‌کند','نشان‌دهنده گرمای پردازنده سرور است','فقط روی مدل‌های تولید تصویر اثر دارد','مقدار بالاتر معمولاً خروجی متنوع‌تر و کمتر قابل پیش‌بینی می‌دهد'],c:3},
+{l:'خیلی سخت',s:35,q:'«Prompt Injection» چیست؟',o:['روشی برای سریع‌تر کردن آموزش مدل','پنهان کردن دستورهای مخرب در ورودی یا محتوای خارجی برای منحرف کردن رفتار مدل','حذف خودکار پرامپت‌های قدیمی','افزایش حافظه کارت گرافیک'],c:1}
+];
+/* ================================================================================ */
+
+const app=document.getElementById('app');
+const LET=['الف','ب','ج','د'];
+function h(tag,at,...kids){const e=document.createElement(tag);for(const k in at||{}){if(k==='class')e.className=at[k];else if(k.slice(0,2)==='on')e[k]=at[k];else if(k==='disabled'){e.disabled=!!at[k]}else e.setAttribute(k,at[k])}kids.flat().forEach(c=>e.append(c instanceof Node?c:document.createTextNode(c)));return e}
+function show(...n){app.replaceChildren(...n)}
+function chips(names,cls){return h('div',{class:'chips'},names.length?names.map(n=>h('span',{class:'chip '+cls},n)):h('span',{class:'meta'},'—'))}
+const $=id=>document.getElementById(id);
+
+/* ---------- صفحه اصلی ---------- */
+function home(){
+  const c=new URLSearchParams(location.search).get('c')||'';
+  const name=h('input',{placeholder:'نام و نام خانوادگی',maxlength:30});
+  const code=h('input',{placeholder:'کد بازی (۴ رقم)',inputmode:'numeric',maxlength:4,value:c});
+  show(h('div',{class:'card c'},h('h2',{},'🎯 بازی حذفی هوش مصنوعی'),h('p',{class:'meta'},'سوال‌ها از آسان تا خیلی سخت؛ هر کس غلط جواب دهد حذف می‌شود!'),name,code,
+    h('button',{onclick:()=>{const n=name.value.trim(),k=code.value.trim();if(!n||k.length!==4){alert('نام و کد ۴ رقمی را وارد کنید');return}startPlayer(n,k)}},'ورود به بازی')),
+    h('div',{class:'c'},h('button',{class:'sec',onclick:startHost},'من مدرس هستم (ساخت بازی)')));
+}
+
+/* ---------- مدرس (میزبان) ---------- */
+const G={phase:'lobby',players:new Map(),qi:-1,opts:[],correct:0,endAt:0,timer:null,res:null,code:''};
+let hostPeer;
+function startHost(){
+  show(h('p',{class:'c'},'در حال راه‌اندازی…'));
+  if(hostPeer)hostPeer.destroy();
+  const code=String(Math.floor(1000+Math.random()*9000));
+  const peer=hostPeer=new Peer('aiq-'+code);
+  peer.on('error',e=>{if(e.type==='unavailable-id')startHost();else show(h('p',{class:'c'},'خطا در اتصال ('+e.type+'). اینترنت را بررسی کنید و صفحه را دوباره باز کنید.'))});
+  peer.on('open',()=>{G.code=code;render()});
+  peer.on('connection',conn=>{
+    conn.on('data',d=>onData(conn,d));
+    conn.on('close',()=>{const p=conn._p;if(p&&p.conn===conn){if(G.phase==='lobby')G.players.delete(p.name);broadcast();render()}});
+  });
+}
+const plist=()=>[...G.players.values()];
+const aliveNames=()=>plist().filter(p=>p.alive).map(p=>p.name);
+function send(p,m){try{if(p.conn&&p.conn.open)p.conn.send(m)}catch(e){}}
+function stateFor(p){
+  if(G.phase==='lobby')return{t:'lobby',names:plist().map(x=>x.name)};
+  if(G.phase==='q'){const Q=QUESTIONS[G.qi];return{t:'q',i:G.qi,n:QUESTIONS.length,l:Q.l,q:Q.q,o:G.opts,sec:Math.max(0,(G.endAt-Date.now())/1000),alive:p.alive,answered:p.ans!==null}}
+  if(G.phase==='r')return{t:'r',...G.res,alive:p.alive};
+  return{t:'end',winners:aliveNames()};
+}
+function broadcast(){plist().forEach(p=>send(p,stateFor(p)))}
+function onData(conn,d){
+  if(!d)return;
+  if(d.t==='join'){
+    const name=String(d.name||'').trim().slice(0,30);if(!name)return;
+    let p=G.players.get(name);
+    if(p){if(p.conn&&p.conn.open&&p.conn!==conn){conn.send({t:'err',m:'این نام قبلاً استفاده شده است. نام دیگری انتخاب کنید.'});return}p.conn=conn}
+    else{p={name,conn,alive:G.phase==='lobby',ans:null};G.players.set(name,p)}
+    conn._p=p;
+    if(G.phase==='lobby')broadcast();else send(p,stateFor(p));
+    render();
+  }else if(d.t==='a'&&conn._p){
+    const p=conn._p;
+    if(G.phase==='q'&&p.alive&&p.ans===null&&d.i===G.qi&&Number.isInteger(d.k)&&d.k>=0&&d.k<4){p.ans=d.k;send(p,{t:'ack'});render();if(allAnswered())reveal()}
+  }
+}
+function allAnswered(){const a=plist().filter(p=>p.alive&&p.conn&&p.conn.open);return a.length>0&&a.every(p=>p.ans!==null)}
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function startQ(){
+  G.qi++;const Q=QUESTIONS[G.qi];
+  const idx=shuffle([0,1,2,3]);G.opts=idx.map(i=>Q.o[i]);G.correct=idx.indexOf(Q.c);
+  plist().forEach(p=>p.ans=null);G.phase='q';G.endAt=Date.now()+Q.s*1000;
+  clearInterval(G.timer);G.timer=setInterval(()=>{if(Date.now()>=G.endAt)reveal();else upd()},500);
+  broadcast();render();
+}
+function reveal(){
+  if(G.phase!=='q')return;clearInterval(G.timer);G.phase='r';
+  const al=plist().filter(p=>p.alive),right=al.filter(p=>p.ans===G.correct);
+  let out=[];
+  if(right.length){out=al.filter(p=>p.ans!==G.correct);out.forEach(p=>p.alive=false)}
+  G.res={i:G.qi,o:G.opts,correct:G.correct,out:out.map(p=>p.name),names:aliveNames(),none:!right.length};
+  broadcast();render();
+}
+function next(){if(aliveNames().length<=1||G.qi>=QUESTIONS.length-1){G.phase='end';broadcast();render()}else startQ()}
+function reset(){clearInterval(G.timer);G.phase='lobby';G.qi=-1;plist().forEach(p=>{p.alive=true;p.ans=null});broadcast();render()}
+function upd(){const el=$('ht');if(el)el.textContent='⏱ '+Math.max(0,Math.ceil((G.endAt-Date.now())/1000))+' ثانیه'}
+function optsView(rev){return h('div',{class:'opts'},G.opts.map((o,i)=>h('div',{class:'opt'+(rev?(i===G.correct?' ok':' dim'):'')},LET[i]+') '+o)))}
+function render(){
+  const ps=plist(),al=ps.filter(p=>p.alive);
+  const top=h('div',{class:'top'},h('b',{},'🎯 بازی حذفی هوش مصنوعی'),h('span',{class:'code'},'کد: '+G.code));
+  let body;
+  if(G.phase==='lobby'){
+    const link=location.href.split(/[?#]/)[0]+'?c='+G.code;
+    body=[h('div',{class:'card c'},h('p',{},'فراگیران لینک زیر را در گوشی باز کنند (یا فقط کد را وارد کنند):'),h('div',{class:'big',dir:'ltr'},link),h('button',{class:'sec',onclick:()=>navigator.clipboard&&navigator.clipboard.writeText(link)},'کپی لینک')),
+      h('div',{class:'card'},h('h3',{},'حاضرین ('+ps.length+')'),chips(ps.map(p=>p.name),'')),
+      h('button',{onclick:startQ,disabled:!ps.length},'شروع بازی')];
+  }else if(G.phase==='q'){
+    const Q=QUESTIONS[G.qi],an=al.filter(p=>p.ans!==null).length;
+    body=[h('div',{class:'card'},h('div',{class:'meta'},`سؤال ${G.qi+1} از ${QUESTIONS.length} • سطح: ${Q.l}`),h('h2',{},Q.q),optsView(false),h('div',{class:'timer',id:'ht'}),h('p',{class:'c meta'},`پاسخ داده‌اند: ${an} از ${al.length}`)),
+      h('div',{class:'card'},h('h3',{},'در بازی ('+al.length+')'),chips(al.map(p=>p.name),'ok')),
+      h('button',{class:'sec',onclick:reveal},'پایان سؤال و نمایش نتیجه')];
+  }else if(G.phase==='r'){
+    const Q=QUESTIONS[G.qi],last=al.length<=1||G.qi>=QUESTIONS.length-1;
+    body=[h('div',{class:'card'},h('div',{class:'meta'},`نتیجه سؤال ${G.qi+1} • سطح: ${Q.l}`),h('h2',{},Q.q),optsView(true)),
+      h('div',{class:'card'},G.res.none?h('p',{class:'msg-bad'},'هیچ‌کس درست پاسخ نداد؛ همه ادامه می‌دهند.'):[h('h3',{},'حذف‌شدگان این مرحله ('+G.res.out.length+')'),chips(G.res.out,'bad')]),
+      h('div',{class:'card'},h('h3',{},'باقی‌مانده ('+G.res.names.length+')'),chips(G.res.names,'ok')),
+      h('button',{onclick:next},last?'نمایش نتیجه نهایی':'سؤال بعدی')];
+  }else{
+    body=[h('div',{class:'card c'},h('h2',{},'🏆 پایان بازی'),h('p',{},al.length===1?'برنده:':'برندگان:'),chips(al.map(p=>p.name),'ok')),h('button',{onclick:reset},'بازی جدید (بازگشت به سالن انتظار)')];
+  }
+  show(top,...body);if(G.phase==='q')upd();
+}
+
+/* ---------- فراگیر ---------- */
+function startPlayer(name,code){
+  show(h('p',{class:'c'},'در حال اتصال…'));
+  const peer=new Peer();let conn,st=null,endAt=0,chosen=null,lastQ=-1,rt=null,tm=null;
+  const retry=()=>{clearTimeout(rt);rt=setTimeout(connect,2500)};
+  function connect(){
+    conn=peer.connect('aiq-'+code,{reliable:true});
+    conn.on('open',()=>conn.send({t:'join',name}));
+    conn.on('data',d=>{
+      if(d.t==='err'){show(h('div',{class:'card c'},h('p',{class:'msg-bad'},d.m),h('button',{onclick:home},'بازگشت')));conn.close();return}
+      if(d.t==='ack')return;
+      st=d;if(d.t==='q'){if(d.i!==lastQ){lastQ=d.i;chosen=d.answered?-1:null}endAt=Date.now()+d.sec*1000}
+      draw();
+    });
+    conn.on('close',retry);
+  }
+  peer.on('open',connect);
+  peer.on('error',e=>{if(e.type==='peer-unavailable'){show(h('div',{class:'card c'},h('p',{},'بازی با این کد پیدا نشد؛ کد را بررسی کنید یا منتظر مدرس بمانید…'),h('button',{class:'sec',onclick:home},'بازگشت')));retry()}else retry()});
+  clearInterval(tm);tm=setInterval(()=>{const el=$('t');if(el&&st&&st.t==='q')el.textContent='⏱ '+Math.max(0,Math.ceil((endAt-Date.now())/1000))},500);
+  function draw(){
+    const s=st;let n;
+    if(s.t==='lobby')n=[h('div',{class:'card c'},h('h2',{},'منتظر شروع بازی…'),h('p',{},'نام شما: '+name)),h('div',{class:'card'},h('h3',{},'حاضرین ('+s.names.length+')'),chips(s.names,''))];
+    else if(s.t==='q'){
+      const head=h('div',{class:'meta'},`سؤال ${s.i+1} از ${s.n} • سطح: ${s.l}`);
+      if(!s.alive)n=[h('div',{class:'card c'},h('p',{class:'msg-bad'},'شما حذف شده‌اید؛ تماشا کنید 👀')),h('div',{class:'card'},head,h('h3',{},s.q))];
+      else n=[h('div',{class:'card'},head,h('h2',{},s.q),h('div',{class:'opts'},s.o.map((o,i)=>h('button',{class:'opt'+(chosen===i?' sel':''),disabled:chosen!==null,onclick:()=>{chosen=i;conn.send({t:'a',i:s.i,k:i});draw()}},LET[i]+') '+o))),h('div',{class:'timer',id:'t'}),chosen!==null?h('p',{class:'c msg-ok'},'پاسخ شما ثبت شد ✔'):'')];
+    }else if(s.t==='r'){
+      const out=s.out.includes(name);
+      n=[h('div',{class:'card c'},out?h('p',{class:'msg-bad'},'متأسفیم، حذف شدید ❌'):s.alive?h('p',{class:'msg-ok'},s.none?'هیچ‌کس درست نداد؛ همه ادامه می‌دهند':'آفرین! به مرحله بعد رفتید ✅'):h('p',{class:'meta'},'شما تماشاگر هستید')),
+        h('div',{class:'opts'},s.o.map((o,i)=>h('div',{class:'opt'+(i===s.correct?' ok':' dim')},LET[i]+') '+o))),
+        h('div',{class:'card'},h('h3',{},'باقی‌مانده ('+s.names.length+')'),chips(s.names,'ok')),
+        s.out.length?h('div',{class:'card'},h('h3',{},'حذف‌شدگان این مرحله'),chips(s.out,'bad')):''];
+    }else n=[h('div',{class:'card c'},h('h2',{},'🏆 پایان بازی'),h('p',{},s.winners.includes(name)?'تبریک! شما جزو برندگان هستید 🎉':'بازی تمام شد. ممنون از مشارکت شما!'),chips(s.winners,'ok'))];
+    show(h('div',{class:'top'},h('b',{},name),h('span',{class:'code'},'کد: '+code)),...n);
+  }
+}
+home();
+</script>
+</body>
+</html>
